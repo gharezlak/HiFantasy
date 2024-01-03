@@ -1,10 +1,3 @@
-/**
- * Sample React Native App
- * https://github.com/facebook/react-native
- *
- * @format
- */
-
 import React from 'react';
 import { useState, useEffect } from 'react';
 import {
@@ -22,11 +15,14 @@ import {
   Pressable,
   ScrollView,
   Image,
+  ActivityIndicator,
 } from 'react-native';
 
-import { Slider } from "@miblanchard/react-native-slider";
-import { trackMarkStyles, bleStyles, styles } from './styles';
+import { bleStyles, styles, textFont, rollButtons } from './styles';
 import { Colors } from 'react-native/Libraries/NewAppScreen';
+import Die from './components/die';
+import PmButton from './components/pmButton';
+import SplashScreen from 'react-native-splash-screen';
 
 const SECONDS_TO_SCAN_FOR = 3;
 const SERVICE_UUIDS: string[] = [];
@@ -40,6 +36,10 @@ import BleManager, {
   BleScanMode,
   Peripheral,
 } from 'react-native-ble-manager';
+
+import { convertString } from 'convert-string'
+import { Buffer } from 'buffer';
+
 const BleManagerModule = NativeModules.BleManager;
 const bleManagerEmitter = new NativeEventEmitter(BleManagerModule);
 
@@ -51,63 +51,6 @@ declare module 'react-native-ble-manager' {
   }
 }
 
-const DEFAULT_VALUE = 0;
-
-const SliderContainer = (props: {
-  caption: string;
-  children: React.ReactElement;
-  sliderValue?: Array<number>;
-  trackMarks?: Array<number>;
-  vertical?: boolean;
-}) => {
-  const { caption, sliderValue, trackMarks } = props;
-  const [value, setValue] = React.useState(
-    sliderValue ? sliderValue : DEFAULT_VALUE,
-  );
-  let renderTrackMarkComponent: (index: number) => JSX.Element;
-
-  if (trackMarks?.length && (!Array.isArray(value) || value?.length === 1)) {
-    renderTrackMarkComponent = (index: number): JSX.Element => {
-      const currentMarkValue = trackMarks[index];
-      const currentSliderValue =
-        value || (Array.isArray(value) && value[0]) || 0;
-      const style =
-        currentMarkValue > Math.max(currentSliderValue)
-          ? trackMarkStyles.activeMark
-          : trackMarkStyles.inactiveMark;
-      return <View style={style} />;
-    };
-  }
-
-  const renderChildren = () => {
-    return React.Children.map(
-      props.children,
-      (child: React.ReactElement) => {
-        if (!!child && child.type === Slider) {
-          return React.cloneElement(child, {
-            onValueChange: setValue,
-            renderTrackMarkComponent,
-            trackMarks,
-            value,
-          });
-        }
-
-        return child;
-      },
-    );
-  };
-
-  return (
-    <View style={styles.sliderContainer}>
-      <View style={styles.titleContainer}>
-        <Text>{caption}</Text>
-        <Text>{Array.isArray(value) ? value.join(' - ') : value}</Text>
-      </View>
-      {renderChildren()}
-    </View>
-  );
-};
-
 const App: React.FC = () => {
   const [isScanning, setIsScanning] = useState(false);
   const [peripherals, setPeripherals] = useState(
@@ -115,8 +58,14 @@ const App: React.FC = () => {
   );
   const [connected, setConnected] = useState(false);
   const [booted, setBooted] = useState(false);
-  const [selectedTower, setSelectedTower] = useState(null);
+  const [selectedTower, setSelectedTower] = useState<Peripheral | null>(null);
   const [customValues, setCustomValues] = useState([0, 0, 0, 0, 0, 0, 0]);
+
+  useEffect(() => {
+    if (Platform.OS === "android") {
+      SplashScreen.hide();
+    }
+  }, []);
 
   //console.debug('peripherals map updated', [...peripherals.entries()]);
 
@@ -130,6 +79,7 @@ const App: React.FC = () => {
     if (!isScanning) {
       // reset found peripherals before scan
       setPeripherals(new Map<Peripheral['id'], Peripheral>());
+      console.log(peripherals);
 
       try {
         //console.debug('[startScan] starting scan...');
@@ -186,8 +136,8 @@ const App: React.FC = () => {
     //   peripheral.name = 'NO NAME';
     // }
     // addOrUpdatePeripheral(peripheral.id, peripheral);
-    const p_name = peripheral?.name;
-    if (p_name && p_name == "DSD TECH") {
+    const p_name = peripheral?.advertising?.localName;
+    if (p_name && p_name == "Tower1") {
       addOrUpdatePeripheral(peripheral.id, peripheral);
     }
   };
@@ -358,38 +308,6 @@ const App: React.FC = () => {
     startScan();
   }, [booted])
 
-  useEffect(() => {
-    if (connected) {
-      console.log('we\'re connected!');
-      console.log(peripherals);
-    }
-    // const changeModuleName = async (id: string, newName: string): Promise<void> => {
-    //   try {
-    //     // Connect to the peripheral
-    //     await BleManager.connect(id);
-
-    //     // Convert the new name to an array of numbers
-    //     const data = Array.from(Buffer.from(newName, 'utf8'));
-
-    //     // Write the new name to the characteristic
-    //     await BleManager.write(
-    //       id,
-    //       '0000ffe0-0000-1000-8000-00805f9b34fb', // Service UUID
-    //       '0000ffe2-0000-1000-8000-00805f9b34fb', // Characteristic UUID
-    //       data
-    //     );
-
-    //     // Disconnect from the peripheral
-    //     await BleManager.disconnect(id);
-
-    //     setConnected(false);
-
-    //     console.log('Module name changed successfully!');
-    //   } catch (error) {
-    //     console.log('Error changing module name:', error);
-    //   }
-    // };
-  }, [connected])
 
   const handleAndroidPermissions = () => {
     if (Platform.OS === 'android' && Platform.Version >= 31) {
@@ -436,158 +354,195 @@ const App: React.FC = () => {
 
   const renderItem = ({ item }: { item: Peripheral }) => {
     console.log("item connected? - " + item.connected);
-    const backgroundColor = item.connected ? '#069400' : Colors.white;
+    const backgroundColor = item.connected ? Colors.white : Colors.white;
+    //function to toggle peripheral connection togglePeripheralConnection(item)
     return (
       <TouchableHighlight
-        underlayColor="#0082FC"
-        onPress={() => togglePeripheralConnection(item)}>
+        underlayColor={Colors.white}
+        onPress={() => setSelectedTower(item)}>
         <View style={[bleStyles.row, { backgroundColor }]}>
           <Text style={bleStyles.peripheralName}>
             {/* completeLocalName (item.name) & shortAdvertisingName (advertising.localName) may not always be the same */}
-            {item.name}
-            {item.connecting && ' - Connecting...'}
+            {item.advertising.localName}
           </Text>
         </View>
       </TouchableHighlight>
     );
   };
 
-  const rollDice = () => {
-    console.log(customValues);
-  }
-
-  const handleSliderChange = (index: number, value: number[], reset: boolean = false) => {
-    console.log('changing slider value...');
-    const newCustomValues = [...customValues];
-    newCustomValues[index] = reset ? 0 : value[0];
-    setCustomValues(newCustomValues);
+  const changeValue = (action: string, roller: number) => {
+    setCustomValues((prevCustomValues) => {
+      const updatedValues = [...prevCustomValues];
+      if (action === 'plus') {
+        updatedValues[roller] = (updatedValues[roller] || 0) + 1;
+      } else if (action === 'minus') {
+        updatedValues[roller] = (updatedValues[roller] || 0) - 1;
+      }
+      return updatedValues;
+    });
   };
 
-  const refreshSliders = () => {
+  const refreshValues = () => {
     setCustomValues([0, 0, 0, 0, 0, 0, 0]);
   }
 
-  return (
-    <SafeAreaView style={styles.container}>
-      {/* {Array.from(peripherals.values()).length > 0 && ( */}
-      <View>
-        <SliderContainer caption="D4">
-          <Slider
-            minimumValue={0}
-            maximumValue={20}
-            step={1}
-            trackClickable={true}
-            onSlidingComplete={(newVal) => handleSliderChange(0, newVal)}
-          />
-        </SliderContainer>
-        <SliderContainer caption="D6">
-          <Slider
-            minimumValue={0}
-            maximumValue={20}
-            step={1}
-            trackClickable={true}
-            onSlidingComplete={(value) => handleSliderChange(1, value)}
-          />
-        </SliderContainer>
-        <SliderContainer caption="D8">
-          <Slider
-            minimumValue={0}
-            maximumValue={20}
-            step={1}
-            trackClickable={true}
-            onSlidingComplete={(value) => handleSliderChange(2, value)}
-          />
-        </SliderContainer>
-        <SliderContainer caption="D10">
-          <Slider
-            minimumValue={0}
-            maximumValue={20}
-            step={1}
-            trackClickable={true}
-            onSlidingComplete={(value) => handleSliderChange(3, value)}
-          />
-        </SliderContainer>
-        <SliderContainer caption="D12">
-          <Slider
-            minimumValue={0}
-            maximumValue={20}
-            step={1}
-            trackClickable={true}
-            onSlidingComplete={(value) => handleSliderChange(4, value)}
-          />
-        </SliderContainer>
-        <SliderContainer caption="D20">
-          <Slider
-            minimumValue={0}
-            maximumValue={20}
-            step={1}
-            trackClickable={true}
-            onSlidingComplete={(value) => handleSliderChange(5, value)}
-          />
-        </SliderContainer>
-        <SliderContainer caption="D100">
-          <Slider
-            minimumValue={0}
-            maximumValue={20}
-            step={1}
-            trackClickable={true}
-            onSlidingComplete={(value) => handleSliderChange(6, value)}
-          />
-        </SliderContainer>
-        <View style={{ alignItems: 'center' }}>
-          <TouchableOpacity onPress={() => refreshSliders()}>
-            <Image
-              source={require('./assets/refresh.png')}
-              style={{ width: 37, height: 37, marginTop: 25 }}
-            />
-          </TouchableOpacity>
-        </View>
-        <View style={{ flexDirection: 'row', justifyContent: 'space-around', alignItems: 'center' }}>
-          <TouchableOpacity style={{ backgroundColor: '#2a9df4', borderRadius: 10, padding: 10, marginTop: 24 }} onPress={() => rollDice()}>
-            <Text style={{ color: 'white', fontWeight: "bold" }}>Roll Custom</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={{ backgroundColor: '#2a9df4', borderRadius: 10, padding: 10, marginTop: 24 }} onPress={() => rollDice()}>
-            <Text style={{ color: 'white', fontWeight: "bold" }}>Roll D20</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={{ backgroundColor: '#2a9df4', borderRadius: 10, padding: 10, marginTop: 24 }} onPress={() => rollDice()}>
-            <Text style={{ color: 'white', fontWeight: "bold" }}>Roll D100</Text>
-          </TouchableOpacity>
-        </View>
-        <StatusBar />
-      </View>
-      {/* )} */}
+  const assets = [
+    { "roller": 0, "die": '4' },
+    { "roller": 1, "die": '6' },
+    { "roller": 2, "die": '8' },
+    { "roller": 3, "die": '10' },
+    { "roller": 4, "die": '12' },
+    { "roller": 5, "die": '20' },
+    { "roller": 6, "die": '100' },
+  ]
 
-      {/* <View>
+  const rollDice = async (deviceUUID: string, intArray: number[]) => {
+
+    refreshValues();
+
+    console.log(selectedTower?.advertising.serviceData);
+    try {
+
+      const BleManagerModule = NativeModules.BleManager;
+      const bleManagerEmitter = new NativeEventEmitter(BleManagerModule);
+
+      await BleManager.connect(deviceUUID);
+
+      // Retrieve services and characteristics of a connected device
+      const retrieveServicesAndCharacteristics = async (dUUID: string) => {
+        try {
+          const services = await BleManager.retrieveServices(dUUID);
+          console.log('Services:', services);
+        } catch (error) {
+          console.error('Error retrieving services and characteristics:', error);
+        }
+      };
+
+      // Usage
+      await retrieveServicesAndCharacteristics(deviceUUID);
+
+      const buffer = Buffer.from(JSON.stringify(intArray));
+      console.log(buffer);
+
+      // Subscribe to notifications from the BLE device
+      await BleManager.startNotification(deviceUUID, 'ffe0', 'ffe1');
+
+      bleManagerEmitter.addListener(
+        "BleManagerDidUpdateValueForCharacteristic",
+        ({ value, peripheral, characteristic, service }) => {
+          // Convert bytes array to string
+          const data = String.fromCharCode(...value);
+          console.log(`Received ${data} for characteristic ${characteristic}`);
+
+          const closeConnection = async (dUUID: string) => {
+            await BleManager.disconnect(dUUID);
+            console.log('Data sent successfully and device disconnected!');
+          }
+
+          closeConnection(deviceUUID);
+        }
+      );
+
+      // Write the data to the BLE device
+      await BleManager.writeWithoutResponse(
+        deviceUUID,
+        'ffe0',
+        'ffe1',
+        buffer.toJSON().data
+      );
+
+
+    } catch (error) {
+      console.log('Error:', error);
+      await BleManager.disconnect(deviceUUID);
+      console.log('device disconnected');
+    }
+  };
+
+  if (selectedTower != null) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <View>
+          <View style={{ flexDirection: 'row', justifyContent: "space-between", marginBottom: 10 }}>
+            <TouchableOpacity style={{ marginLeft: 8 }} onPress={() => setSelectedTower(null)}>
+              <Image
+                source={require('./assets/back.png')}
+                style={{ width: 50, height: 50 }}
+              />
+            </TouchableOpacity>
+            <Text style={{ fontSize: 36, paddingTop: 5, fontFamily: 'Roboto-LightItalic' }}>{selectedTower.advertising.localName}</Text>
+            <TouchableOpacity style={{}} onPress={() => refreshValues()}>
+              <Image
+                source={require('./assets/refresh.png')}
+                style={{ width: 50, height: 50 }}
+              />
+            </TouchableOpacity>
+          </View>
+          {assets.map((asset) => (
+            <View key={asset.roller} id={asset.die} style={{ flexDirection: 'row', alignItems: 'center' }}>
+              <Die asset={asset.die} />
+              <TouchableOpacity onPress={() => changeValue('minus', asset.roller)}>
+                <PmButton buttonType='minus' />
+              </TouchableOpacity>
+              <Text style={textFont.font}>{customValues[asset.roller]}</Text>
+              <TouchableOpacity onPress={() => changeValue('plus', asset.roller)}>
+                <PmButton buttonType='plus' />
+              </TouchableOpacity>
+            </View>
+          ))}
+          <View style={{ flexDirection: 'row' }}>
+            <TouchableOpacity style={rollButtons.button} onPress={() => rollDice(selectedTower.id, customValues)}>
+              <Text style={rollButtons.text}>Roll Custom</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={rollButtons.button} onPress={() => rollDice(selectedTower.id, [0, 0, 0, 0, 0, 1, 0])}>
+              <Text style={rollButtons.text}>Roll D20</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={rollButtons.button} onPress={() => rollDice(selectedTower.id, [0, 0, 0, 0, 0, 0, 1])}>
+              <Text style={rollButtons.text}>Roll D100</Text>
+            </TouchableOpacity>
+          </View>
+          <StatusBar />
+        </View>
+      </ SafeAreaView >
+    )
+  }
+
+  return (
+    <SafeAreaView>
+      <View style={{ marginTop: "50%" }}>
         <Text style={{ textAlign: "center", fontSize: 36, fontWeight: "300" }}>Select Tower</Text>
       </View>
 
-      <FlatList
-        data={Array.from(peripherals.values())}
-        contentContainerStyle={{ rowGap: 12, marginTop: 12, marginBottom: 8, marginLeft: "25%", width: "50%" }}
-        renderItem={renderItem}
-        keyExtractor={item => item.id}
-      />
-      <SafeAreaView style={bleStyles.body}>
-      <Pressable style={bleStyles.scanButton} onPress={startScan}>
-        <Text style={bleStyles.scanButtonText}>
-          {isScanning ? 'Refreshing...' : 'Refresh'}
-        </Text>
-      </Pressable> */}
+      {isScanning
+        ? (<View style={{ paddingTop: 24 }}><ActivityIndicator size="large" /></View>)
+        : (
+          <View>
+            <FlatList
+              data={Array.from(peripherals.values())}
+              contentContainerStyle={{ rowGap: 12, marginTop: 24, marginBottom: 8, marginLeft: "25%", width: "50%" }}
+              renderItem={renderItem}
+              keyExtractor={item => item.id}
+            />
+            <View>
+              <Pressable style={bleStyles.scanButton} onPress={startScan}>
+                <Text style={bleStyles.scanButtonText}>
+                  {isScanning ? 'Refreshing...' : 'Refresh'}
+                </Text>
+              </Pressable>
 
-      {/* <Pressable style={bleStyles.scanButton} onPress={retrieveConnected}>
-        <Text style={bleStyles.scanButtonText}>
-          {'Retrieve connected peripherals'}
-        </Text>
-      </Pressable>
+              <View>
+                {Array.from(peripherals.values()).length === 0 && (
+                  <View style={bleStyles.row}>
+                    <Text style={bleStyles.noPeripherals}>
+                      No Towers found. Press "Refresh" above.
+                    </Text>
+                  </View>
+                )}
+              </View>
 
-      {Array.from(peripherals.values()).length === 0 && (
-        <View style={bleStyles.row}>
-          <Text style={bleStyles.noPeripherals}>
-            No Peripherals, press "Scan Bluetooth" above.
-          </Text>
-        </View>
-      )} */}
-      {/* </SafeAreaView> */}
+            </View>
+          </View>
+        )}
 
     </ SafeAreaView >
   )

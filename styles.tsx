@@ -10,7 +10,7 @@ export const styles = StyleSheet.create({
     container: {
         alignItems: 'stretch',
         justifyContent: 'flex-start',
-        marginLeft: 36,
+        marginLeft: 22,
         marginRight: 36,
         marginTop: 96,
         marginBottom: 8,
@@ -49,12 +49,12 @@ export const bleStyles = StyleSheet.create({
     scanButton: {
         alignItems: 'center',
         justifyContent: 'center',
-        paddingVertical: 16,
+        paddingVertical: 12,
         backgroundColor: '#0a398a',
-        marginTop: 10,
-        marginLeft: "25%",
+        marginTop: 24,
+        marginLeft: "30%",
         borderRadius: 12,
-        width: "50%",
+        width: "40%",
         ...boxShadow,
     },
     scanButtonText: {
@@ -303,18 +303,6 @@ export const aboveThumbStyles = StyleSheet.create({
     },
 });
 const borderWidth = 4;
-export const trackMarkStyles = StyleSheet.create({
-    activeMark: {
-        borderColor: 'green',
-        borderWidth,
-        left: -borderWidth / 2,
-    },
-    inactiveMark: {
-        borderColor: 'grey',
-        borderWidth,
-        left: -borderWidth / 2,
-    },
-});
 
 export const buttonStyles = StyleSheet.create({
     button: {
@@ -329,3 +317,50 @@ export const buttonStyles = StyleSheet.create({
         textAlign: 'center',
     },
 });
+
+export const textFont = StyleSheet.create({
+    font: {
+        fontFamily: 'Roboto-LightItalic',
+        fontSize: 36,
+        //marginLeft: 15,
+        paddingTop: 12,
+        flex: 1,
+        maxWidth: '30%',
+        textAlign: 'center',
+    }
+});
+
+export const pmButtons = StyleSheet.create({
+    button: {
+        width: 50,
+        height: 50,
+        opacity: .8,
+        marginTop: 8,
+        //marginLeft: 10,
+    }
+})
+
+export const rollButtons = StyleSheet.create({
+    button: {
+        backgroundColor: '#039be6',
+        borderRadius: 10,
+        padding: 10,
+        marginTop: 30,
+        height: 45,
+        marginRight: 16
+    },
+    text: {
+        fontSize: 18,
+        color: 'white',
+        verticalAlign: 'middle',
+        fontFamily: 'Roboto-BoldItalic',
+    }
+})
+
+export const dieImages = StyleSheet.create({
+    die: {
+        width: 75,
+        height: 75,
+        marginRight: 60,
+    }
+})
