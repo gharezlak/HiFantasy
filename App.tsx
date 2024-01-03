@@ -137,9 +137,11 @@ const App: React.FC = () => {
     // }
     // addOrUpdatePeripheral(peripheral.id, peripheral);
     const p_name = peripheral?.advertising?.localName;
-    if (p_name && p_name == "Tower1") {
-      addOrUpdatePeripheral(peripheral.id, peripheral);
-    }
+
+    addOrUpdatePeripheral(peripheral.id, peripheral);
+    // if (p_name && p_name == "Tower1") {
+    //   addOrUpdatePeripheral(peripheral.id, peripheral);
+    // }
   };
 
   const togglePeripheralConnection = async (peripheral: Peripheral) => {
